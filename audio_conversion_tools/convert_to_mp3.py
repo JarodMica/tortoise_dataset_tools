@@ -1,23 +1,17 @@
-'''
-Takes audio files and converts them to mp3 files sampled at 22050hz.
-22050 hz is needed for Tortoise TTS which is why it's chosen
-'''
-
 import os
 import shutil
-import subprocess
 import tkinter as tk
 from tkinter import filedialog
 from concurrent.futures import ThreadPoolExecutor
 import multiprocessing
-
+from pydub import AudioSegment
 
 def convert_audio_to_mp3(source_path, mp3_path):
     try:
-        cmd = ['ffmpeg', '-i', source_path, '-vn', '-ab', '320k', '-ar', '22050', '-y', mp3_path]
-        subprocess.run(cmd, check=True)
+        audio = AudioSegment.from_file(source_path)
+        audio.export(mp3_path, format="mp3", bitrate="320k", parameters=["-ar", "22050"])
         print(f"Converted {source_path} to {mp3_path}")
-    except subprocess.CalledProcessError as e:
+    except Exception as e:
         print(f"Error converting {source_path}: {e}")
 
 def process_folder(folder_path):
@@ -30,7 +24,6 @@ def process_folder(folder_path):
 
     # Utilize maximum CPU threads
     cpu_count = multiprocessing.cpu_count()
-
     with ThreadPoolExecutor(max_workers=cpu_count) as executor:
         for file_name in files:
             source_path = os.path.join(folder_path, file_name)

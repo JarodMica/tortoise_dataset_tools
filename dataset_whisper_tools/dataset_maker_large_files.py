@@ -13,18 +13,18 @@ from pydub import AudioSegment
 from tqdm import tqdm 
 import tkinter as tk
 from tkinter import filedialog
-from pathlib import Path
+from pathlib import Path  # Import the pathlib library
 
 def create_unique_directory(base_dir):
     """
     Create a unique directory by adding a suffix if the directory already exists.
     """
     suffix = 0
-    base_dir = Path(base_dir) 
+    base_dir = Path(base_dir)  # Convert to Path object
     dir_name = base_dir
     while dir_name.exists():
         suffix += 1
-        dir_name = base_dir.parent / f"{base_dir.name}_{suffix}" 
+        dir_name = base_dir.parent / f"{base_dir.name}_{suffix}"  # Corrected line
     dir_name.mkdir(parents=True, exist_ok=True)  # Create the directory and parents if necessary
     return dir_name
 
@@ -34,17 +34,19 @@ def select_directory(title="Select Folder"):
     Open a dialog to select a directory.
     """
     root = tk.Tk()
-    root.withdraw() 
+    root.withdraw()  # Hide the main window
     folder_selected = filedialog.askdirectory(title=title)
     root.destroy()
-    return Path(folder_selected) 
+    return Path(folder_selected)  # Convert to Path object
 
 
 def run_whisperx(audio_files, output_dir, language):
     if language == "ja":
         chunk_size = 8
+    elif language =="ta":
+        chunk_size = 20
     else:
-        chunk_size = 12
+        chunk_size = 20
     try:
         subprocess.run(["whisperx", audio_files, 
                         "--device", "cuda",
@@ -52,14 +54,16 @@ def run_whisperx(audio_files, output_dir, language):
                         "--output_dir", output_dir, 
                         "--language", f"{language}",
                         "--chunk_size", f"{chunk_size}",
+                        # "--align_model", "Harveenchadha/vakyansh-wav2vec2-tamil-tam-250",
+                        "--no_align", # It might be better to run with this parameter for languages w/o align model as some alignment models are not good
                         "--output_format", "srt"], check=True)
     except Exception as e:
         print(f"Error in running whisperx for file {audio_files}: {e}")
 
 def extract_audio_with_srt(audio_file, srt_file, output_dir, padding=0.2):
-    audio_file = Path(audio_file)
-    srt_file = Path(srt_file) 
-    output_dir = Path(output_dir)
+    audio_file = Path(audio_file)  # Convert to Path object
+    srt_file = Path(srt_file)  # Convert to Path object
+    output_dir = Path(output_dir)  # Convert to Path object
     segment_details = []
     try:
         audio = AudioSegment.from_file(audio_file)
@@ -109,7 +113,7 @@ def process_audio_files(base_directory, model_name, language, batch_size, speake
          eval_txt_path.open('a', encoding='utf-8') as eval_file, \
          progress_log_path.open('a', encoding='utf-8') as log_file:
 
-        all_files = [file for file in audio_dir.rglob('*') if file.suffix in ('.wav', '.mp3')]
+        all_files = [file for file in audio_dir.rglob('*') if file.suffix in ('.wav', '.mp3', '.opus')]
 
         for audio_path in tqdm(all_files, desc="Processing audio files"):
             # Skip if already processed
@@ -142,15 +146,11 @@ def process_audio_files(base_directory, model_name, language, batch_size, speake
             log_file.flush()  # Ensure it's written immediately
 
 if __name__ == "__main__":
-    current_script_path = Path(__file__).parent
-    tortoise_base_dir = current_script_path / 'tortoise_data'
+    tortoise_base_dir = Path('tortoise_data')
     finetune_base = tortoise_base_dir / 'finetune_models'
-    
-    language = "es" # input ISO-639 language code
     
     # Ask user if they want to start new or continue existing
     action = input("Start new project (n) or continue existing project (c)? (n/c): ").strip().lower()
-    language = input("Enter the ISO-639 language code you want to use, for example: \nEnglish - en\nSpanish - es\nJapanese - ja\nFrench - fr\nGerman - de")
     
     if action == 'c':
         print("Please select the existing project directory you wish to continue.")
@@ -158,6 +158,7 @@ if __name__ == "__main__":
         if not finetune_dir or not finetune_dir.exists():
             print("No valid directory selected. Exiting.")
             exit()
+        # Optional: You could check here if the selected directory is valid for continuation.
     else:
         print("Creating a new project directory.")
         finetune_dir = create_unique_directory(finetune_base)
@@ -167,4 +168,5 @@ if __name__ == "__main__":
         print("No folder selected for audio data. Exiting.")
         exit()
 
+    language = "de"
     process_audio_files(finetune_dir, model_name='large-v3', language=language, batch_size=16, speaker_name='coqui', audio_dir=chosen_directory)
