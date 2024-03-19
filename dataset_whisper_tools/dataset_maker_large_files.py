@@ -40,23 +40,22 @@ def select_directory(title="Select Folder"):
     return Path(folder_selected)  # Convert to Path object
 
 
-def run_whisperx(audio_files, output_dir, language):
+def run_whisperx(audio_files, output_dir, language, chunk_size=20, no_align=False):
+    cmd = ["whisperx", audio_files, 
+        "--device", "cuda",
+        "--model", "large-v3", 
+        "--output_dir", output_dir, 
+        "--language", f"{language}",
+        "--chunk_size", f"{chunk_size}",
+        # "--align_model", "Harveenchadha/vakyansh-wav2vec2-tamil-tam-250",
+        "--output_format", "srt"]
+    if no_align:
+        cmd.append("--no_align") # It might be better to run with this parameter for languages w/o align model as some alignment models are not good)
+    
     if language == "ja":
         chunk_size = 8
-    elif language =="ta":
-        chunk_size = 20
-    else:
-        chunk_size = 20
     try:
-        subprocess.run(["whisperx", audio_files, 
-                        "--device", "cuda",
-                        "--model", "large-v3", 
-                        "--output_dir", output_dir, 
-                        "--language", f"{language}",
-                        "--chunk_size", f"{chunk_size}",
-                        # "--align_model", "Harveenchadha/vakyansh-wav2vec2-tamil-tam-250",
-                        "--no_align", # It might be better to run with this parameter for languages w/o align model as some alignment models are not good
-                        "--output_format", "srt"], check=True)
+        subprocess.run(cmd, check=True )
     except Exception as e:
         print(f"Error in running whisperx for file {audio_files}: {e}")
 
@@ -67,6 +66,7 @@ def extract_audio_with_srt(audio_file, srt_file, output_dir, padding=0.2):
     segment_details = []
     try:
         audio = AudioSegment.from_file(audio_file)
+        audio = audio.set_frame_rate(22050)
         subs = pysrt.open(srt_file)
         output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -89,7 +89,7 @@ def extract_audio_with_srt(audio_file, srt_file, output_dir, padding=0.2):
         print(f"Error processing file {audio_file} with SRT {srt_file}: {e}")
     return segment_details
 
-def process_audio_files(base_directory, model_name, language, batch_size, speaker_name, audio_dir):
+def process_audio_files(base_directory, language, audio_dir, chunk_size=20, no_align=False):
     base_directory = Path(base_directory)
     audio_dir = Path(audio_dir)
 
@@ -127,7 +127,7 @@ def process_audio_files(base_directory, model_name, language, batch_size, speake
             srt_output_dir.mkdir(parents=True, exist_ok=True)
 
             if not srt_file.exists():
-                run_whisperx(str(audio_path), str(srt_output_dir), language)
+                run_whisperx(str(audio_path), str(srt_output_dir), language, chunk_size, no_align)
             
             segment_details = extract_audio_with_srt(str(audio_path), str(srt_file), str(srt_output_dir))
 
@@ -145,7 +145,7 @@ def process_audio_files(base_directory, model_name, language, batch_size, speake
             log_file.write(f"{str(audio_path)}\n")
             log_file.flush()  # Ensure it's written immediately
 
-if __name__ == "__main__":
+def main():
     tortoise_base_dir = Path('tortoise_data')
     finetune_base = tortoise_base_dir / 'finetune_models'
     
@@ -169,4 +169,7 @@ if __name__ == "__main__":
         exit()
 
     language = "de"
-    process_audio_files(finetune_dir, model_name='large-v3', language=language, batch_size=16, speaker_name='coqui', audio_dir=chosen_directory)
+    process_audio_files(base_directory=finetune_dir, model_name='large-v3', language=language, batch_size=16, speaker_name='coqui', audio_dir=chosen_directory)
+
+if __name__ == "__main__":
+    main()
