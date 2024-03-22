@@ -34,9 +34,10 @@ def extract_transcripts(input_file_path, output_file_path):
     except Exception as e:
         print(f"An error occurred: {e}")
 
-input_file = select_input_file()
-script_dir = os.path.dirname(os.path.abspath(__file__))
-output_file_path = os.path.join(script_dir, 'bpe_train_text.txt')
-extract_transcripts(input_file, output_file_path)
+if __name__ == "__main__": 
+    input_file = select_input_file()
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    output_file_path = os.path.join(script_dir, 'bpe_train_text.txt')
+    extract_transcripts(input_file, output_file_path)
 
-print("Transcripts have been extracted and saved to:", output_file_path)
+    print("Transcripts have been extracted and saved to:", output_file_path)

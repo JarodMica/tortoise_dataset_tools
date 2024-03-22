@@ -9,6 +9,7 @@ import csv
 import random
 import subprocess
 import pysrt
+import shutil
 from pydub import AudioSegment
 from tqdm import tqdm 
 import tkinter as tk
@@ -89,7 +90,7 @@ def extract_audio_with_srt(audio_file, srt_file, output_dir, padding=0.2):
         print(f"Error processing file {audio_file} with SRT {srt_file}: {e}")
     return segment_details
 
-def process_audio_files(base_directory, language, audio_dir, chunk_size=20, no_align=False):
+def process_audio_files(base_directory, language, audio_dir, chunk_size=20, no_align=False, rename_files=False):
     base_directory = Path(base_directory)
     audio_dir = Path(audio_dir)
 
@@ -109,6 +110,8 @@ def process_audio_files(base_directory, language, audio_dir, chunk_size=20, no_a
     else:
         processed_files = set()
 
+    file_counter = 1  # Initialize the file counter
+
     with train_txt_path.open('a', encoding='utf-8') as train_file, \
          eval_txt_path.open('a', encoding='utf-8') as eval_file, \
          progress_log_path.open('a', encoding='utf-8') as log_file:
@@ -120,16 +123,28 @@ def process_audio_files(base_directory, language, audio_dir, chunk_size=20, no_a
             if str(audio_path) in processed_files:
                 continue
 
-            relative_path = audio_path.relative_to(audio_dir)
+            if rename_files:
+                # Generate a new name for the file using the counter
+                new_file_name = f"file_{file_counter}{audio_path.suffix}"
+                new_audio_path = audio_path.with_name(new_file_name)
+
+                # Create a copy of the audio file with the new name
+                shutil.copy(str(audio_path), str(new_audio_path))
+
+                file_counter += 1  # Increment the file counter
+            else:
+                new_audio_path = audio_path
+
+            relative_path = new_audio_path.relative_to(audio_dir)
             srt_output_dir = split_output_dir / relative_path.with_suffix('')
             srt_file = srt_output_dir / (relative_path.stem + '.srt')
 
             srt_output_dir.mkdir(parents=True, exist_ok=True)
 
             if not srt_file.exists():
-                run_whisperx(str(audio_path), str(srt_output_dir), language, chunk_size, no_align)
+                run_whisperx(str(new_audio_path), str(srt_output_dir), language, chunk_size, no_align)
             
-            segment_details = extract_audio_with_srt(str(audio_path), str(srt_file), str(srt_output_dir))
+            segment_details = extract_audio_with_srt(str(new_audio_path), str(srt_file), str(srt_output_dir))
 
             for segment_file, text in segment_details:
                 segment_path = srt_output_dir / segment_file
@@ -141,7 +156,11 @@ def process_audio_files(base_directory, language, audio_dir, chunk_size=20, no_a
                 else:
                     train_file.write(entry)
 
-            # Log the processed file
+            # Delete the renamed file after transcription
+            if rename_files:
+                new_audio_path.unlink()
+
+            # Log the original file path
             log_file.write(f"{str(audio_path)}\n")
             log_file.flush()  # Ensure it's written immediately
 
