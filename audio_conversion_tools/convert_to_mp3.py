@@ -19,7 +19,7 @@ def process_folder(folder_path):
     if not os.path.exists(converted_folder):
         os.makedirs(converted_folder)
 
-    audio_extensions = ["wav", "opus", "m4a"]
+    audio_extensions = ["wav", "opus", "m4a", "webm"]
     files = [f for f in os.listdir(folder_path) if f.split('.')[-1] in audio_extensions]
 
     # Utilize maximum CPU threads
