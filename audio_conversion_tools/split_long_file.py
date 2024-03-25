@@ -42,7 +42,7 @@ def process_file(file_path, output_dir):
                         subprocess.call(['ffmpeg', '-i', file_path, '-ss', str(start_time), '-t', str(split_time), '-c', 'copy', output_file])
                 
                 # Move the original file to the "original" folder
-                original_file = os.path.join(output_dir, 'original', os.path.basename(file_path))
+                original_file = os.path.join(output_dir, 'original_pre_split', os.path.basename(file_path))
                 shutil.move(file_path, original_file)
             else:
                 # Move the file to the "not_split" folder
@@ -53,10 +53,10 @@ def process_file(file_path, output_dir):
         print(f"Error processing file: {file_path}")
         print(f"Error message: {e}")
 
-def process_folder(folder_path):
+def process_folder(folder_path, num_processes):
     # Create "split", "original", and "not_split" folders if they don't exist
     split_folder = os.path.join(folder_path, 'split')
-    original_folder = os.path.join(folder_path, 'original')
+    original_folder = os.path.join(folder_path, 'original_pre_split')
     not_split_folder = os.path.join(folder_path, 'not_split')
     os.makedirs(split_folder, exist_ok=True)
     os.makedirs(original_folder, exist_ok=True)
@@ -66,7 +66,7 @@ def process_folder(folder_path):
     file_list = [os.path.join(folder_path, file) for file in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, file))]
     
     # Create a pool of processes
-    pool = multiprocessing.Pool(processes=8)
+    pool = multiprocessing.Pool(processes=num_processes)
     
     # Process each file in parallel
     pool.starmap(process_file, [(file, folder_path) for file in file_list])

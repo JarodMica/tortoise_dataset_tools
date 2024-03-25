@@ -81,7 +81,7 @@ def process_subtitles(subs, audio, audio_file, output_dir, padding, file_count):
         segment_details.append((output_filename, sub_text))
     return segment_details
 
-def extract_audio_with_srt(audio_file, srt_file, output_dir, padding=0.2):
+def extract_audio_with_srt(audio_file, srt_file, output_dir, num_processes, padding=0.2):
     audio_file = Path(audio_file)  # Convert to Path object
     srt_file = Path(srt_file)  # Convert to Path object
     output_dir = Path(output_dir)  # Convert to Path object
@@ -98,7 +98,7 @@ def extract_audio_with_srt(audio_file, srt_file, output_dir, padding=0.2):
         # Split subtitles into chunks of 8
         subtitle_chunks = [subs[i:i+8] for i in range(0, len(subs), 8)]
 
-        with multiprocessing.Pool(processes=8) as pool:
+        with multiprocessing.Pool(processes=num_processes) as pool:
             results = [pool.apply_async(process_subtitles, args=(chunk, audio, audio_file, output_dir, padding, file_count + i*8))
                        for i, chunk in enumerate(subtitle_chunks)]
             for result in results:
@@ -109,7 +109,7 @@ def extract_audio_with_srt(audio_file, srt_file, output_dir, padding=0.2):
 
     return segment_details
 
-def process_audio_files(base_directory, language, audio_dir, chunk_size=20, no_align=False, rename_files=False):
+def process_audio_files(base_directory, language, audio_dir, num_processes, chunk_size=20, no_align=False, rename_files=False):
     base_directory = Path(base_directory)
     audio_dir = Path(audio_dir)
 
@@ -148,7 +148,7 @@ def process_audio_files(base_directory, language, audio_dir, chunk_size=20, no_a
 
             if rename_files:
                 # Generate a new name for the file using the counter
-                new_file_name = f"file_{file_counter}{audio_path.suffix}"
+                new_file_name = f"file___{file_counter}{audio_path.suffix}"
                 new_audio_path = audio_path.with_name(new_file_name)
                 # Create a copy of the audio file with the new name
                 try:
@@ -167,9 +167,13 @@ def process_audio_files(base_directory, language, audio_dir, chunk_size=20, no_a
             srt_output_dir.mkdir(parents=True, exist_ok=True)
 
             if not srt_file.exists():
-                run_whisperx(str(new_audio_path), str(srt_output_dir), language, chunk_size, no_align)
-            
-            segment_details = extract_audio_with_srt(str(new_audio_path), str(srt_file), str(srt_output_dir))
+                run_whisperx(new_audio_path, srt_output_dir, language, chunk_size, no_align)
+                
+            if len(os.listdir(srt_output_dir)) > 1:
+                new_audio_path.unlink()
+                continue
+            else:
+                segment_details = extract_audio_with_srt(new_audio_path, srt_file, srt_output_dir, num_processes)
 
             for segment_file, text in segment_details:
                 segment_path = srt_output_dir / segment_file
