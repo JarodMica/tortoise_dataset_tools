@@ -137,7 +137,7 @@ def process_audio_files(base_directory, language, audio_dir, num_processes, chun
 
         all_files = []
         for file in os.listdir(audio_dir):
-            if file.lower().endswith(('.wav', '.mp3', '.opus', '.webm')):
+            if file.lower().endswith(('.wav', '.mp3', '.opus', '.webm', 'mp4')):
                 file_path = os.path.join(audio_dir, file)
                 all_files.append(Path(file_path))
         
