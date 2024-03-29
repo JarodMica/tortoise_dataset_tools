@@ -33,7 +33,7 @@ def process_folder(folder_path, num_processes):
     if not os.path.exists(converted_folder):
         os.makedirs(converted_folder)
     
-    audio_extensions = ["wav", "opus", "m4a", "webm", "mp3"]
+    audio_extensions = ["wav", "opus", "m4a", "webm", "mp3", "mp4"]
     files = [os.path.join(folder_path, f) for f in os.listdir(folder_path) if f.split('.')[-1] in audio_extensions]
     
     pool = multiprocessing.Pool(processes=num_processes)

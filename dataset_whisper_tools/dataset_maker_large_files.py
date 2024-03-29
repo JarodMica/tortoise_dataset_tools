@@ -144,6 +144,7 @@ def process_audio_files(base_directory, language, audio_dir, num_processes, chun
         for audio_path in tqdm(all_files, desc="Processing audio files"):
             # Skip if already processed
             if str(audio_path) in processed_files:
+                file_counter += 1
                 continue
 
             if rename_files:
