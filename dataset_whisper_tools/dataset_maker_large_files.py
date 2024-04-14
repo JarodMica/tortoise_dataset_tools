@@ -45,7 +45,9 @@ def select_directory(title="Select Folder"):
 
 
 def run_whisperx(audio_files, output_dir, language, chunk_size=20, no_align=False):
-    cmd = ["whisperx", audio_files, 
+    if os.path.exists("runtime"):
+        cmd = ["runtime\\python.exe", "-m"
+            "whisperx", audio_files, 
         "--device", "cuda",
         "--model", "large-v3", 
         "--output_dir", output_dir, 
@@ -53,6 +55,15 @@ def run_whisperx(audio_files, output_dir, language, chunk_size=20, no_align=Fals
         "--chunk_size", f"{chunk_size}",
         # "--align_model", "Harveenchadha/vakyansh-wav2vec2-tamil-tam-250",
         "--output_format", "srt"]
+    else:
+        cmd = ["whisperx", audio_files, 
+            "--device", "cuda",
+            "--model", "large-v3", 
+            "--output_dir", output_dir, 
+            "--language", f"{language}",
+            "--chunk_size", f"{chunk_size}",
+            # "--align_model", "Harveenchadha/vakyansh-wav2vec2-tamil-tam-250",
+            "--output_format", "srt"]
     if no_align:
         cmd.append("--no_align") # It might be better to run with this parameter for languages w/o align model as some alignment models are not good)
     
