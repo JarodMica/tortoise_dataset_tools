@@ -5,7 +5,6 @@ lots of tiny files, operation time will take extremely long due to relying on su
 A Python implementation of whisperx should be faster.
 '''
 
-import csv
 import random
 import subprocess
 import pysrt
@@ -15,9 +14,10 @@ from tqdm import tqdm
 import tkinter as tk
 from tkinter import filedialog
 from pathlib import Path  # Import the pathlib library
-import tempfile
 import multiprocessing
+from multiprocessing import Process
 import os
+import gc
 
 def create_unique_directory(base_dir):
     """
@@ -43,6 +43,11 @@ def select_directory(title="Select Folder"):
     root.destroy()
     return Path(folder_selected)  # Convert to Path object
 
+def run_whisperx_process(cmd):
+    try:
+        subprocess.run(cmd, check=True)
+    except Exception as e:
+        print(f"Error in running whisperx: {e}")
 
 def run_whisperx(audio_files, output_dir, language, chunk_size=20, no_align=False):
     if os.path.exists("runtime"):
@@ -64,13 +69,26 @@ def run_whisperx(audio_files, output_dir, language, chunk_size=20, no_align=Fals
             "--chunk_size", f"{chunk_size}",
             # "--align_model", "Harveenchadha/vakyansh-wav2vec2-tamil-tam-250",
             "--output_format", "srt"]
+        
+    # Just a quick hack real quick, please fix me!
+    if language == "None":
+        cmd = ["whisperx", audio_files, 
+            "--device", "cuda",
+            "--model", "large-v3", 
+            "--output_dir", output_dir, 
+            "--chunk_size", f"{chunk_size}",
+            # "--align_model", "Harveenchadha/vakyansh-wav2vec2-tamil-tam-250",
+            "--output_format", "srt"]
+        
     if no_align:
         cmd.append("--no_align") # It might be better to run with this parameter for languages w/o align model as some alignment models are not good)
     
     if language == "ja":
         chunk_size = 8
     try:
-        subprocess.run(cmd, check=True )
+        process = multiprocessing.Process(target=run_whisperx_process, args=(cmd,))
+        process.start()
+        process.join()  # Wait for the process to complete
     except Exception as e:
         print(f"Error in running whisperx for file {audio_files}: {e}")
 
@@ -115,6 +133,10 @@ def extract_audio_with_srt(audio_file, srt_file, output_dir, num_processes, padd
             for result in results:
                 segment_details.extend(result.get())
 
+        # Release the memory used by the AudioSegment object
+        del audio
+        gc.collect()
+
     except Exception as e:
         print(f"Error processing file {audio_file} with SRT {srt_file}: {e}")
 
@@ -146,18 +168,18 @@ def process_audio_files(base_directory, language, audio_dir, num_processes, chun
          eval_txt_path.open('a', encoding='utf-8') as eval_file, \
          progress_log_path.open('a', encoding='utf-8') as log_file:
 
-        all_files = []
-        for file in os.listdir(audio_dir):
-            if file.lower().endswith(('.wav', '.mp3', '.opus', '.webm', '.mp4')):
-                file_path = os.path.join(audio_dir, file)
-                all_files.append(Path(file_path))
+        def audio_files_generator():
+            for file in os.listdir(audio_dir):
+                if file.lower().endswith(('.wav', '.mp3', '.opus', '.webm', '.mp4')):
+                    file_path = os.path.join(audio_dir, file)
+                    yield Path(file_path)
         
-        for audio_path in tqdm(all_files, desc="Processing audio files"):
+        for audio_path in tqdm(audio_files_generator(), desc="Processing audio files"):
             # Skip if already processed
             if str(audio_path) in processed_files:
                 file_counter += 1
                 continue
-
+            
             if rename_files:
                 # Generate a new name for the file using the counter
                 new_file_name = f"file___{file_counter}{audio_path.suffix}"
@@ -183,6 +205,7 @@ def process_audio_files(base_directory, language, audio_dir, num_processes, chun
                 
             if len(os.listdir(srt_output_dir)) > 1:
                 new_audio_path.unlink()
+                gc.collect()
                 continue
             else:
                 segment_details = extract_audio_with_srt(new_audio_path, srt_file, srt_output_dir, num_processes)
@@ -200,10 +223,13 @@ def process_audio_files(base_directory, language, audio_dir, num_processes, chun
             # Delete the renamed file after transcription
             if rename_files:
                 new_audio_path.unlink()
+                gc.collect()
 
             # Log the original file path
             log_file.write(f"{str(audio_path)}\n")
             log_file.flush()  # Ensure it's written immediately
+            gc.collect()
+            del segment_details
 
 def main():
     tortoise_base_dir = Path('tortoise_data')

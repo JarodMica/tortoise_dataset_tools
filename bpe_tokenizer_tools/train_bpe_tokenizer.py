@@ -2,6 +2,7 @@ from tokenizers import Tokenizer
 from tokenizers.models import BPE
 from tokenizers.trainers import BpeTrainer
 from tokenizers.pre_tokenizers import Whitespace
+from tkinter import Tk, filedialog
 import json
 import re
 
@@ -17,13 +18,15 @@ def clean_text(input_file_path, output_file_path):
     with open(output_file_path, 'w', encoding='utf-8') as output_file:
         output_file.write(cleaned_text)
 
-def train_tokenizer(input_path, tokenizer_path, language):
+def train_tokenizer(input_path, tokenizer_path, language, special_tokens=["[STOP]", "[UNK]", "[SPACE]" ], vocab_size=512):
     # Initialize a tokenizer with the BPE model
     tokenizer = Tokenizer(BPE(unk_token="[UNK]"))
     # Use a basic whitespace pre-tokenizer
     tokenizer.pre_tokenizer = Whitespace()
 
-    trainer = BpeTrainer(special_tokens=["[STOP]", "[UNK]", "[SPACE]", "0","1","2","3","4","5","6","7","8","9",], vocab_size=256)
+    # trainer = BpeTrainer(special_tokens=["[STOP]", "[UNK]", "[SPACE]", "0","1","2","3","4","5","6","7","8","9",], vocab_size=256)
+    trainer = BpeTrainer(special_tokens=special_tokens, vocab_size=vocab_size)
+    
 
     clean_text(input_path, input_path)
     tokenizer.train([input_path], trainer)
@@ -38,8 +41,17 @@ def train_tokenizer(input_path, tokenizer_path, language):
 
     with open(tokenizer_path, 'w', encoding='utf-8') as f:
         json.dump(tokenizer_json, f, ensure_ascii=False, indent=4)
-
+        
+def choose_file():
+    root = Tk()
+    root.withdraw()
+    file = filedialog.askopenfilename()
+    root.destroy()
+    return file
+    
 if __name__ == "__main__":
-    input_path = "bpe_train_text.txt"
-    tokenizer_path = "vietnamese_bpe_tokenizer.json"
-    train_tokenizer(input_path, tokenizer_path, language='vi')
+    input_path = choose_file()
+    tokenizer_path = "ja_base256_tokenizer.json"
+    special_tokens = ["[STOP]", "[UNK]", "[SPACE]"]
+    vocab_size = 256
+    train_tokenizer(input_path, tokenizer_path, language='multi', special_tokens=special_tokens, vocab_size=vocab_size)

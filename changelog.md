@@ -1,5 +1,9 @@
 # Changelog
 
+## 5/~~/2024
+Did a lot of changes, didn't write em all down...
+- Made some script to help with multilingual training in tortoise
+
 ## 3/22/2024
 - pydub was causing issues for large files larger than 4gb so switched back over to calling ffmpeg from subprocess inside of dataset_maker_large_files.py
     - Also made it default to convert to mp3 and it's done before srt transcription
