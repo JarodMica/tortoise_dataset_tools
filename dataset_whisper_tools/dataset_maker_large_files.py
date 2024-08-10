@@ -123,7 +123,7 @@ def process_subtitles(subs, audio, audio_file, output_dir, padding, file_count, 
         segment_details.append((output_filename, sub_text))
     return segment_details
 
-def extract_audio_with_srt(audio_file, srt_file, output_dir, num_processes, ext, padding=0.2, srt_multiprocessing=True):
+def extract_audio_with_srt(audio_file, srt_file, output_dir, num_processes, ext, padding=0.2, srt_multiprocessing=True, sr_rate=22050):
     audio_file = Path(audio_file)  # Convert to Path object
     srt_file = Path(srt_file)  # Convert to Path object
     output_dir = Path(output_dir)  # Convert to Path object
@@ -135,7 +135,7 @@ def extract_audio_with_srt(audio_file, srt_file, output_dir, num_processes, ext,
         existing_files = list(output_dir.iterdir())
         file_count = len(existing_files)
         audio = AudioSegment.from_file(audio_file)
-        audio = audio.set_frame_rate(22050)
+        audio = audio.set_frame_rate(sr_rate)
 
         # Split subtitles into chunks of 8
         subtitle_chunks = [subs[i:i+8] for i in range(0, len(subs), 8)]
@@ -160,7 +160,7 @@ def extract_audio_with_srt(audio_file, srt_file, output_dir, num_processes, ext,
     return segment_details
 
 def process_audio_files(base_directory, language, audio_dir, num_processes, ext, chunk_size=20, no_align=False, rename_files=False, 
-                        whisper_model=None, srt_multiprocessing=True, speaker_id=False):
+                        whisper_model=None, srt_multiprocessing=True, speaker_id=False, sr_rate=22050):
     
     base_directory = Path(base_directory)
     audio_dir = Path(audio_dir)
@@ -227,14 +227,14 @@ def process_audio_files(base_directory, language, audio_dir, num_processes, ext,
                 gc.collect()
                 continue
             else:
-                segment_details = extract_audio_with_srt(new_audio_path, srt_file, srt_output_dir, num_processes, ext=ext, srt_multiprocessing=srt_multiprocessing, )
+                segment_details = extract_audio_with_srt(new_audio_path, srt_file, srt_output_dir, num_processes, ext=ext, srt_multiprocessing=srt_multiprocessing, sr_rate=sr_rate)
 
             for segment_file, text in segment_details:
                 segment_path = srt_output_dir / segment_file
                 csv_entry_path = f"audio/{segment_path.relative_to(split_output_dir).as_posix().replace('/', '_')}"
                 entry = f"{csv_entry_path}|{text}\n"
 
-                if speaker_ID:
+                if speaker_id:
                     entry = f"{csv_entry_path}|{text}|0\n"
                 if random.random() < 0.05:
                     eval_file.write(entry)
