@@ -119,8 +119,15 @@ def process_segment(sub, audio, audio_file, output_dir, padding, file_count, i, 
 def process_subtitles(subs, audio, audio_file, output_dir, padding, file_count, ext):
     segment_details = []
     for i, sub in enumerate(subs):
-        output_filename, sub_text = process_segment(sub, audio, audio_file, output_dir, padding, file_count, i, ext=ext)
-        segment_details.append((output_filename, sub_text))
+        # Calculate the duration of the subtitle
+        duration = sub.end.ordinal - sub.start.ordinal
+        
+        # Only process subtitles longer than 1 second (1000 ms)
+        if duration > 1000:
+            output_filename, sub_text = process_segment(sub, audio, audio_file, output_dir, padding, file_count, i, ext=ext)
+            segment_details.append((output_filename, sub_text))
+        else:
+            print(f"Skipped segment {i+1}: Duration {duration} ms is less than 1 second.")
     return segment_details
 
 def extract_audio_with_srt(audio_file, srt_file, output_dir, num_processes, ext, padding=0.2, srt_multiprocessing=True, sr_rate=22050):
